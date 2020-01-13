@@ -1,0 +1,5 @@
+[app]
+app-build-deploy ansible_connection=local
+
+[secrets]
+secrets-and-keys ansible_connection=local

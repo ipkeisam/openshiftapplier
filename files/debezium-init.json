@@ -1,0 +1,19 @@
+{
+  "plugin.name": "wal2json",
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector", 
+  "database.server.name": "vehicle",  
+  "database.hostname": "vehicle-service-postgres-db",
+  "database.port": "5432",
+  "database.password": "${DB_password}",
+  "database.dbname": "vehicle-service",
+  "database.user": "postgres", 
+  "table.whitelist": "public.event",  
+  "transforms": "unwrap,value2key,extract",  
+  "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+  "transforms.unwrap.drop.tombstones": "true",
+  "transforms.unwrap.drop.deletes": "true",  
+  "transforms.extract.type": "org.apache.kafka.connect.transforms.ExtractField$Value",
+  "transforms.extract.field": "payload",  
+  "transforms.value2key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+  "transforms.value2key.fields": "id,event_name,sequence_number"
+}

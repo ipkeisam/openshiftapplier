@@ -1,0 +1,131 @@
+---
+openshift_cluster_content:
+- object: app-build
+  content:
+  - name: "{{ app_name }}-build"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/s2i-app-build/binary-template-with-artifactory-push.yml"
+    params_from_vars: "{{ build.app }}"
+    namespace: "{{ ci_cd.NAMESPACE }}"
+    tags:
+    - app
+    - build
+    - dev
+  - name: "{{ app_name }}-proxy-build"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/s2i-app-build/binary-template-with-artifactory-push-and-pull.yml"
+    params_from_vars: "{{ build.proxy }}"
+    namespace: "{{ ci_cd.NAMESPACE }}"
+    tags:
+    - proxy
+    - proxy-build
+    - build
+    - dev
+- object: app-pipelines
+  content:
+  - name: "{{ app_name }}-pr-pipeline"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/jenkins-pipelines/jenkins-pipeline-template-with-ocp-triggers-and-with-secret.yml"
+    params_from_vars: "{{ build.pr_pipeline }}"
+    namespace: "{{ ci_cd.NAMESPACE }}"
+    tags:
+    - app
+    - pipeline
+    - pipeline-pr
+  - name: "{{ app_name }}-dev-pipeline"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/jenkins-pipelines/jenkins-pipeline-template-with-ocp-triggers-and-with-secret.yml"
+    params_from_vars: "{{ build.dev_pipeline }}"
+    namespace: "{{ ci_cd.NAMESPACE }}"
+    tags:
+    - app
+    - pipeline
+    - pipeline-dev
+  - name: "{{ app_name }}-test-pipeline"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/jenkins-pipelines/jenkins-pipeline-template-with-ocp-triggers-and-with-secret.yml"
+    params_from_vars: "{{ build.test_pipeline }}"
+    namespace: "{{ ci_cd.NAMESPACE }}"
+    tags:
+    - app
+    - pipeline
+    - pipeline-test
+- object: "{{ dev.NAMESPACE }}-deploy"
+  content:
+  - name: "{{ app_name }}-{{ dev.NAMESPACE }}-deploy"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/app-deploy/grpc-app-deploy-template-with-db-and-vault.yml"
+    params_from_vars: "{{ deploy.dev.app }}"
+    namespace: "{{ dev.NAMESPACE }}"
+    tags:
+    - app
+    - "{{ dev.NAMESPACE }}-deploy"
+    - app-{{ dev.NAMESPACE }}-deploy
+    - dev
+  - name: "{{ app_name }}-proxy-{{ dev.NAMESPACE }}-deploy"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/envoy-service-proxy/grpc-envoy-deploy.yml"
+    params_from_vars: "{{ deploy.dev.proxy }}"
+    namespace: "{{ dev.NAMESPACE }}"
+    tags:
+    - proxy
+    - "{{ dev.NAMESPACE }}-deploy"
+    - proxy-{{ dev.NAMESPACE }}-deploy
+    - dev
+  - name: "{{ app_name }}-{{ dev_namespace }}-deploy-persistent"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/postgres/postgres-template-deploy.yml"
+    params_from_vars: "{{ deploy.dev.postgres }}"
+    namespace: "{{ dev.NAMESPACE }}"
+    tags:
+    - app
+    - db
+    - "{{ dev.NAMESPACE }}-deploy"
+    - db-{{ dev.NAMESPACE }}-deploy
+    - dev
+  - name: "{{ app_name }}-{{ dev_namespace }}-debezium"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/debezium/debezium-connector-template.yml"
+    params_from_vars: "{{ deploy.dev.debezium }}"
+    namespace: "{{ dev.NAMESPACE }}"
+    tags:
+    - app
+    - db
+    - "{{ dev.NAMESPACE }}-deploy"
+    - db-{{ dev.NAMESPACE }}-deploy
+    - debezium
+    - debezium-{{ dev.NAMESPACE }}-deploy
+    - dev
+- object: "{{ test.NAMESPACE }}-deploy"
+  content:
+  - name: "{{ app_name }}-{{ test.NAMESPACE }}-deploy"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/app-deploy/grpc-app-deploy-template-with-db-and-vault.yml"
+    params_from_vars: "{{ deploy.test.app }}"
+    namespace: "{{ test.NAMESPACE }}"
+    tags:
+    - app
+    - "{{ test.NAMESPACE }}-deploy"
+    - app-{{ test.NAMESPACE }}-deploy
+    - test
+  - name: "{{ app_name }}-proxy-{{ test.NAMESPACE }}-deploy"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/envoy-service-proxy/grpc-envoy-deploy.yml"
+    params_from_vars: "{{ deploy.test.proxy }}"
+    namespace: "{{ test.NAMESPACE }}"
+    tags:
+    - proxy
+    - "{{ test.NAMESPACE }}-deploy"
+    - proxy-{{ test.NAMESPACE }}-deploy
+    - test
+  - name: "{{ app_name }}-{{ test_namespace }}-deploy-persistent"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/postgres/postgres-template-deploy.yml"
+    params_from_vars: "{{ deploy.test.postgres }}"
+    namespace: "{{ test.NAMESPACE }}"
+    tags:
+    - app
+    - db
+    - "{{ test.NAMESPACE }}-deploy"
+    - db-{{ test.NAMESPACE }}-deploy
+    - dev
+  - name: "{{ app_name }}-{{ test_namespace }}-debezium"
+    template: "https://bitbucket.org/omnitracslab/openshift-templates/raw/{{ openshift_templates_ver }}/debezium/debezium-connector-template.yml"
+    params_from_vars: "{{ deploy.test.debezium }}"
+    namespace: "{{ test.NAMESPACE }}"
+    tags:
+    - app
+    - db
+    - "{{ test.NAMESPACE }}-deploy"
+    - db-{{ test.NAMESPACE }}-deploy
+    - debezium
+    - debezium-{{ test.NAMESPACE }}-deploy
+    - dev

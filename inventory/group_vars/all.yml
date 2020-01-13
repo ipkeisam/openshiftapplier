@@ -1,0 +1,133 @@
+ci_cd_namespace: platform-ci-cd
+dev_namespace: platform-dev
+test_namespace: platform-test
+context_name: vehicle
+app_name: "{{ context_name }}-service"
+openshift_templates_ver: v1.91
+team_name: omnitracslab
+dev_base_domain: dc12-dev-01.cld.omnitracs.com
+dev_apps_domain: apps.{{ dev_base_domain }}
+kafka_cluster_name: platform-kafka-cluster
+grpc_service_names: omnitracs.platform.vehicle.v1.VehicleService
+grpc_service_port: 8080
+artifactory_repo: omnitracs-dev-images.jfrog.io
+artifactory_secret: artifactory
+artifactory_folder: platform
+
+ci_cd:
+  NAMESPACE: "{{ ci_cd_namespace }}"
+  NAMESPACE_DISPLAY_NAME: "{{ ci_cd_namespace }}"
+  SECRET_NAME: "ci-cd-secret"
+
+dev:
+  NAMESPACE: "{{ dev_namespace }}"
+  NAMESPACE_DISPLAY_NAME: "{{ dev_namespace }}"
+
+test:
+  NAMESPACE: "{{ test_namespace }}"
+  NAMESPACE_DISPLAY_NAME: "{{ test_namespace }}"
+
+build:
+  app:
+    NAME: "{{ app_name }}"
+    S2I_BASE_IMAGE: redhat-openjdk18-openshift:1.7
+    NAMESPACE: "{{ dev_namespace }}"
+    ARTIFACTORY_REPO: "{{ artifactory_repo  }}"
+    ARTIFACTORY_SECRET_CREDS: "{{ artifactory_secret }}"
+    ARTIFACTORY_FOLDER: "{{ artifactory_folder }}"
+  pr_pipeline:
+    APP_NAME: "{{ app_name }}"
+    NAME: "{{ app_name }}-pr"
+    JENKINSFILE_SOURCE_REPOSITORY_URL: git@bitbucket.org:{{ team_name }}/{{ app_name }}.git
+    JENKINSFILE_SOURCE_REPOSITORY_REF: develop
+    JENKINSFILE_SOURCE_SECRET: ci-cd-secret
+    JENKINSFILE_PATH: Jenkinsfile.pr
+    CI_CD_NAMESPACE: "{{ ci_cd_namespace }}"
+    DEV_NAMESPACE: "{{ dev_namespace }}"
+  dev_pipeline:
+    APP_NAME: "{{ app_name }}"
+    NAME: "{{ app_name }}-dev"
+    JENKINSFILE_SOURCE_REPOSITORY_URL: git@bitbucket.org:{{ team_name }}/{{ app_name }}.git
+    JENKINSFILE_SOURCE_REPOSITORY_REF: develop
+    JENKINSFILE_SOURCE_SECRET: ci-cd-secret
+    JENKINSFILE_PATH: Jenkinsfile.dev
+    CI_CD_NAMESPACE: "{{ ci_cd_namespace }}"
+    DEV_NAMESPACE: "{{ dev_namespace }}"
+    TEST_NAMESPACE: "{{ test_namespace }}"
+    ARTIFACTORY_FOLDER: "{{ artifactory_folder }}"
+  test_pipeline:
+    APP_NAME: "{{ app_name }}"
+    NAME: "{{ app_name }}-test"
+    JENKINSFILE_SOURCE_REPOSITORY_URL: git@bitbucket.org:{{ team_name }}/{{ app_name }}.git
+    JENKINSFILE_SOURCE_REPOSITORY_REF: develop
+    JENKINSFILE_SOURCE_SECRET: ci-cd-secret
+    JENKINSFILE_PATH: Jenkinsfile.test
+    CI_CD_NAMESPACE: "{{ ci_cd_namespace }}"
+    DEV_NAMESPACE: "{{ dev_namespace }}"
+    TEST_NAMESPACE: "{{ test_namespace }}"
+    ARTIFACTORY_FOLDER: "{{ artifactory_folder }}"   
+  proxy:
+    NAME: "{{app_name}}-proxy"
+    S2I_NAMESPACE: "{{ dev_namespace }}"
+    S2I_BASE_IMAGE: envoy-proxy:latest
+    NAMESPACE: "{{ dev_namespace }}"
+    ARTIFACTORY_REPO: "{{ artifactory_repo  }}"
+    ARTIFACTORY_SECRET_CREDS: "{{ artifactory_secret }}"
+    ARTIFACTORY_FOLDER: "{{ artifactory_folder }}"
+deploy:
+  dev:
+    app:
+      NAME: "{{ app_name }}"
+      DEPLOY_IMAGE_STREAM_TAG_NAME: latest
+      JAVA_OPTIONS: "-Dspring.profiles.active=dev,jaeger -Dvault.path=secret/data/product/platform/dev/vehicle-service"
+      DB_SECRET: "{{ app_name }}-dbcreds"
+    proxy:
+      NAME: "{{ app_name }}-proxy"
+      CERT_SECRET_NAME: "{{ app_name }}-proxy-certs"
+      DEPLOY_IMAGE_STREAM_TAG_NAME: latest
+      OCP_SERVICE_NAME: "{{ app_name }}"
+      GRPC_SERVICE_NAMES: "{{ grpc_service_names }}"
+      GRPC_SERVICE_PORT: "{{grpc_service_port}}"
+    postgres:
+      NAME: "{{ app_name }}-postgres"
+      DB_SECRET: "{{ app_name }}-dbcreds"
+      DB_ADMIN_SECRET: "{{ app_name }}-admindbcreds"
+      S2I_BASE_IMAGE: "postgresql-omnitracs:latest"
+      S2I_NAMESPACE: "{{ dev_namespace }}"
+      POSTGRESQL_DATABASE: "{{ app_name }}"
+    debezium:
+      NAME: "{{ app_name }}-debezium"
+      DB_SECRET: "{{ app_name }}-admindbcreds"
+      DB_NAME: "{{ app_name }}"
+      BOOTSTRAP_SERVERS: "{{ kafka_cluster_name }}-kafka-bootstrap.{{ dev_namespace }}.svc:9092"
+      INIT_JSON: "{{ lookup('file', '{{ playbook_dir }}/files/debezium-init.json') | from_json | to_json }}"
+      S2I_BASE_IMAGE: "debezium-omnitracs:latest"
+      S2I_NAMESPACE: "{{ dev_namespace }}"
+  test:
+    app:
+      NAME: "{{ app_name }}"
+      DEPLOY_IMAGE_STREAM_TAG_NAME: latest
+      JAVA_OPTIONS: "-Dspring.profiles.active=test,jaeger -Dvault.path=secret/data/product/platform/test/vehicle-service"
+      DB_SECRET: "{{ app_name}}-dbcreds"
+    proxy:
+      NAME: "{{ app_name }}-proxy"
+      CERT_SECRET_NAME: "{{ app_name }}-proxy-certs"
+      DEPLOY_IMAGE_STREAM_TAG_NAME: latest
+      OCP_SERVICE_NAME: "{{ app_name }}"
+      GRPC_SERVICE_NAMES: "{{ grpc_service_names }}"
+      GRPC_SERVICE_PORT: "{{grpc_service_port}}"
+    postgres:
+      NAME: "{{ app_name }}-postgres"
+      DB_SECRET: "{{ app_name}}-dbcreds"
+      DB_ADMIN_SECRET: "{{ app_name }}-admindbcreds"
+      S2I_BASE_IMAGE: "postgresql-omnitracs:latest"
+      S2I_NAMESPACE: "{{ test_namespace }}" 
+      POSTGRESQL_DATABASE: "{{ app_name }}"
+    debezium:
+      NAME: "{{ app_name }}-debezium"
+      DB_SECRET: "{{ app_name }}-admindbcreds"
+      DB_NAME: "{{ app_name }}"
+      BOOTSTRAP_SERVERS: "{{ kafka_cluster_name }}-kafka-bootstrap.{{ test_namespace }}.svc:9092"
+      INIT_JSON: "{{ lookup('file', '{{ playbook_dir }}/files/debezium-init.json') | from_json | to_json }}"
+      S2I_BASE_IMAGE: "debezium-omnitracs:latest"
+      S2I_NAMESPACE: "{{ test_namespace }}"
